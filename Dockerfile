@@ -1,14 +1,16 @@
-﻿FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
 
-COPY ["RailwayDemoApi.csproj", "./"]
-RUN dotnet restore
+COPY ["RailwayDemoApi/RailwayDemoApi.csproj", "RailwayDemoApi/"]
+RUN dotnet restore "RailwayDemoApi/RailwayDemoApi.csproj"
+
 COPY . .
-RUN dotnet publish -c Release -o /app
+WORKDIR /src/RailwayDemoApi
+RUN dotnet publish "RailwayDemoApi.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-COPY --from=build /app .
-# Railway provides a PORT variable, we must listen on it
-ENV ASPNETCORE_URLS=http://+:8080
+COPY --from=build /app/publish .
+
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "RailwayDemoApi.dll"]
+ENTRYPOINT ["sh", "-c", "dotnet RailwayDemoApi.dll --urls=http://0.0.0.0:${PORT:-8080}"]
